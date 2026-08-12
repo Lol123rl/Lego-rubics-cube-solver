@@ -1,0 +1,1132 @@
+PRIMECUBER v1.5 - SPIKE APP 3 PYTHON CONVERSION
+=================================================
+This file contains the Python source for the PrimeCuber v1.5 project converted
+from the older SPIKE Prime device-object API to the SPIKE App 3 module-based
+API.
+Hardware ports used by this build:
+A = Color Sensor
+B = Scan motor
+C = Distance Sensor
+D = Turn motor
+F = Tilt motor
+IMPORTANT:
+PrimeCuber v1.5 also uses a large binary lookup-table file (pcmtab4_v1p5.bin)
+for its fastest solving mode. That binary file is NOT Python source and is not
+included in this text file. Keep the original binary table from the project
+when installing the full solver.
+The original project was written by David Gilday. The original copyright and
+non-commercial-use notice is retained in the source below.
+=================================================
+FILE: primecuber_spike3.py
+=================================================
+import gc, time, hub
+import motor
+import color_sensor
+import distance_sensor
+gc.collect()
+import pcsolver_v1p5
+def trace(msg):
+    if False:
+        gc.collect()
+        print("TRACE: "+msg+" mem="+str(gc.mem_free()))
+trace("module primecuber_v1p5")
+class MotorCompat:
+    def __init__(self, port):
+        self.port = port
+    def pwm(self, value):
+        motor.set_duty_cycle(self.port, int(value * 100))
+    def brake(self):
+        motor.stop(self.port, stop=motor.BRAKE)
+    def busy(self, _mode=1):
+        return False
+class ColorSensorCompat:
+    def __init__(self, port):
+        self.port = port
+    def get(self):
+        return color_sensor.rgbi(self.port)
+    def mode(self, *args):
+        pass
+class DistanceSensorCompat:
+    def __init__(self, port):
+        self.port = port
+    def get(self, *args):
+        d = distance_sensor.distance(self.port)
+        return (d/10 if d >= 0 else None,)
+    def mode(self, *args):
+        pass
+trace("class primecuber")
+class primecuber():
+    turn_ratio = int(36/12)
+    def __init__(self):
+        self.count      = 0
+        self.scan_speed = 38
+        self.slower     = False
+        self.c          = pcsolver_v1p5.cube()
+        self.cm         = pcsolver_v1p5.cm
+        self.c.alloc_colors()
+        hub.display.clear()
+        self.portscan = True
+        while self.portscan:
+            time.sleep_ms(100)
+            self.portscan = False
+            self.sensor_color = ColorSensorCompat(hub.port.A)
+            self.sensor_dist  = DistanceSensorCompat(hub.port.C)
+            self.motor_scan   = MotorCompat(hub.port.B)
+            self.motor_turn   = MotorCompat(hub.port.D)
+            self.motor_tilt   = MotorCompat(hub.port.F)
+            self.portscan = False
+    def check_port(self, port, motor_device, t, x, y):
+        return MotorCompat(port) if motor_device else ColorSensorCompat(port)
+    def Position(self, mot):
+        return motor.relative_position(mot.port)
+    def run_nw(self, mot, pos, speed):
+        motor.run_to_absolute_position(mot.port, int(pos), int(speed), stop=motor.HOLD)
+    def run_to(self, mot, pos, speed):
+        motor.run_to_absolute_position(mot.port, int(pos), int(speed), stop=motor.HOLD)
+        while abs(self.Position(mot)-pos) > 3:
+            time.sleep_ms(1)
+    def ScanReset(self):
+        self.ColorOff()
+        for i in range(2):
+            if i > 0:
+                self.motor_scan.pwm(35)
+                time.sleep_ms(100)
+                self.motor_scan.brake()
+                time.sleep_ms(100)
+            self.motor_scan.pwm(-35)
+            pos1 = self.Position(self.motor_scan)
+            pos0 = pos1+100
+            while pos1 < pos0:
+                time.sleep_ms(100)
+                pos0 = pos1
+                pos1 = self.Position(self.motor_scan)
+        self.motor_scan_base = self.Position(self.motor_scan)+10
+        self.motor_scan.brake()
+    def ScanPiece(self, pos, f, o, i):
+        self.run_nw(self.motor_scan, self.motor_scan_base+pos, 100)
+        self.Display(i)
+        pos = self.motor_turn_base+self.turn_ratio*45
+        self.motor_turn_base = pos
+        pos -= self.turn_ratio*3
+        while self.Position(self.motor_turn) < pos:
+            time.sleep_ms(1)
+        self.ScanRGB(f, o)
+        if self.motor_scan.busy(1):
+            self.slower = True
+    def TurnReset(self):
+        self.motor_turn_base = self.Position(self.motor_turn)
+        self.motor_turn.brake()
+    def TurnRotate(self, rot):
+        self.motor_turn_base = self.motor_turn_base+self.turn_ratio*90*rot
+        self.run_to(self.motor_turn, self.motor_turn_base, 80)
+    def TurnTurn(self, rot, rotn):
+        self.TiltHold()
+        extra= self.turn_ratio*22
+        extran = self.turn_ratio*3
+        if rot < 0:
+            extra = -extra
+        if rotn < 0:
+            extra -= extran
+        elif rotn > 0:
+            extra += extran
+        self.motor_turn_base = self.motor_turn_base+self.turn_ratio*90*rot
+        self.run_to(self.motor_turn, self.motor_turn_base+extra, 80)
+        self.run_to(self.motor_turn, self.motor_turn_base, 80)
+    def TiltReset(self):
+        self.motor_tilt.pwm(40)
+        pos1 = self.Position(self.motor_tilt)
+        pos0 = pos1-100
+        while pos1 > pos0:
+            time.sleep_ms(100)
+            pos0 = pos1
+            pos1 = self.Position(self.motor_tilt)
+        self.motor_tilt_base = self.Position(self.motor_tilt)-5
+        self.motor_tilt.brake()
+    def TiltAway(self, o=45):
+        self.Eyes()
+        self.run_nw(self.motor_tilt, self.motor_tilt_base, 40)
+        pos = self.motor_tilt_base-o
+        while self.Position(self.motor_tilt) < pos:
+            time.sleep_ms(1)
+    def TiltHold(self):
+        self.run_to(self.motor_tilt, self.motor_tilt_base-75, 70)
+    def TiltTilt(self):
+        self.TiltHold()
+        self.run_to(self.motor_tilt, self.motor_tilt_base-155, 70)
+        time.sleep_ms(50)
+        self.run_to(self.motor_tilt, self.motor_tilt_base-55, 100)
+        self.run_nw(self.motor_tilt, self.motor_tilt_base-75, 70)
+        time.sleep_ms(50)
+    def ColorOff(self):
+        pass
+    def ColorOn(self):
+        pass
+    def CubeSense(self):
+        mm = distance_sensor.distance(self.sensor_dist.port)
+        return mm >= 0 and mm < 100
+    def CubeRemove(self):
+        self.Eyes()
+        count = 0
+        while count < 150:
+            count += 1
+            if self.CubeSense():
+                count = 0
+            time.sleep_ms(10)
+    def CubeInsert(self):
+        self.Eyes(0,0,3,3)
+        count = 0
+        while count < 150:
+            count += 1
+            if not self.CubeSense():
+                count = 0
+            if hub.button.pressed(hub.button.LEFT):
+                self.motor_turn_base -= 2*self.turn_ratio
+                self.run_nw(self.motor_turn, self.motor_turn_base, 40)
+            if hub.button.pressed(hub.button.RIGHT):
+                self.motor_turn_base += 2*self.turn_ratio
+                self.run_nw(self.motor_turn, self.motor_turn_base, 40)
+            time.sleep_ms(10)
+        self.Eyes()
+    def Init(self):
+        self.motor_tilt.pwm(40)
+        self.ScanReset()
+        self.TiltReset()
+        self.TurnReset()
+    def Eyes(self, a=0, b=0, c=0, d=0):
+        distance_sensor.show(self.sensor_dist.port, [a*11, b*11, c*11, d*11])
+    def Show(self, s):
+        hub.display.show(
+            hub.Image('00000:0'+s[0:3]+'0:0'+s[3:6]+'0:0'+s[6:9]+'0:00000')
+        )
+    def Display(self, p):
+        self.Show(('009000000', '000000009', '000000900',
+                '900000000', '000009000', '000000090',
+                '000900000', '090000000', '000090000')[p])
+    def ScanRGB(self, f, o):
+        rgb = color_sensor.rgbi(self.sensor_color.port)
+        self.c.set_rgb(f, o, rgb)
+        rgb = ((2,0,0),
+            (2,0,0),
+            (2,1,0),
+            (2,2,0),
+            (0,2,0),
+            (0,2,0),
+            (0,0,2),
+            (0,0,2),
+            (2,2,2))[self.c.get_clr(f, o)]
+        pass
+    def ScanFace(self, f, o, tilt = True):
+        if tilt:
+            self.run_nw(self.motor_scan, self.motor_scan_base+100, 100)
+            pos = self.motor_scan_base+250
+            while self.Position(self.motor_scan) > pos:
+                time.sleep_ms(1)
+            self.TiltTilt()
+        scanning = True
+        while scanning:
+            self.TiltAway(5)
+            self.Eyes(9,9,9,9)
+            self.ColorOn()
+            self.Display(8)
+            self.run_to(self.motor_scan, self.motor_scan_base+485, 100)
+            self.ScanRGB(f, 8)
+            self.motor_tilt.brake()
+            if self.slower:
+                self.slower = False
+                self.scan_speed -= 1
+            self.run_nw(self.motor_turn, self.motor_turn_base+self.turn_ratio*360, self.scan_speed)
+            for i in range(4):
+                self.ScanPiece(300, f, o, i)
+                self.ScanPiece(365, f, o+1, i+4)
+                o += 2
+                if o > 7:
+                    o = 0
+            scanning = self.slower
+        self.ColorOff()
+        hub.display.clear()
+    def SolveCube(self):
+        pass
+        hub.display.show(hub.Image.ARROW_SW)
+        self.CubeInsert()
+        pass
+        hub.display.show(hub.Image.DIAMOND)
+        self.count += 1
+        if self.count >= 10:
+            self.count = 0
+            self.ScanReset()
+        scan = 0
+        found = False
+        while not found and scan < 3:
+            scan += 1
+            self.ScanFace(0, 4, False)
+            self.ScanFace(4, 6)
+            self.ScanFace(2, 0)
+            self.TurnRotate(-1)
+            self.ScanFace(3, 6)
+            self.TurnRotate(1)
+            self.ScanFace(5, 4)
+            self.ScanFace(1, 4)
+            self.Show('968776897')
+            pass
+            t = -1
+            for i in range(12):
+                self.Eyes(5,5,5,5)
+                c = self.c
+                valid = c.determine_colors(i)
+                if valid:
+                    t = i
+                    self.Eyes()
+                    valid = c.valid_positions()
+                    if valid:
+                        found = True
+                        break
+            if not found and scan == 3 and t >= 0:
+                found = c.determine_colors(t)
+        if found:
+            self.Eyes(9,0,9)
+            c.solve(2000)
+            c.solve_apply()
+            self.Eyes(5,5)
+            pass
+            self.Show('999999999')
+            self.run_to(self.motor_scan, self.motor_scan_base, 100)
+            c = self.c
+            d = 3
+            f = 2
+            for mv in range(c.mv_n):
+                md = c.mv_f[mv]
+                mr = c.mv_r[mv]
+                while d != md:
+                    rm = self.cm.get_remap(d, f)
+                    if md == rm.fm[2] or md == rm.fm[4]:
+                        self.TiltTilt()
+                        d = rm.fm[4]
+                    elif md == rm.fm[5]:
+                        self.TiltAway()
+                        self.Eyes(5,5)
+                        self.TurnRotate(2)
+                        f = rm.fm[3]
+                    elif md == rm.fm[3]:
+                        self.TiltAway()
+                        self.Eyes(5,5)
+                        self.TurnRotate(1)
+                        f = rm.fm[4]
+                    else:
+                        self.TiltAway()
+                        self.Eyes(5,5)
+                        self.TurnRotate(-1)
+                        f = rm.fm[5]
+                mrn = 0
+                mvn = mv+1
+                while mvn < c.mv_n:
+                    if self.cm.adjacent(c.mv_f[mvn], md):
+                        mrn = c.mv_r[mvn]
+                        break
+                    mvn += 1
+                self.TurnTurn(mr, mrn)
+            pass
+            self.TiltAway()
+            time.sleep_ms(500)
+            self.TiltReset()
+            self.Eyes(9,9,9,9)
+            if c.mv_n > 0:
+                self.TurnRotate(-6)
+        else:
+            self.run_to(self.motor_scan, self.motor_scan_base, 100)
+            self.TiltReset()
+        while (self.motor_scan.busy(1) or
+            self.motor_turn.busy(1) or
+            self.motor_tilt.busy(1)):
+            time.sleep_ms(1)
+        self.motor_scan.brake()
+        self.motor_turn.brake()
+        self.motor_tilt.brake()
+        hub.display.show(hub.Image.ARROW_NE)
+        self.CubeRemove()
+def main():
+    trace("main()")
+    pc = primecuber()
+    trace("Init()")
+    pc.Init()
+    while True:
+        trace("SolveCube()")
+        pc.SolveCube()
+trace("imported")
+=================================================
+FILE: pccolors_v1p5.py
+=================================================
+import gc, os, time
+gc.collect()
+def trace(msg):
+    if False:
+        gc.collect()
+        print("TRACE: "+msg+" mem="+str(gc.mem_free()))
+trace("module pccolors_v1p5")
+CMAX = 1024
+trace("class color")
+class color():
+    def __init__(self):
+        self.set_rgb(0, 0, 0)
+    def set_rgb(self, r, g, b):
+        h  = 0
+        s  = 0
+        sl = 0
+        l  = 0
+        v  = r
+        if g > v:
+            v = g
+        if b > v:
+            v = b
+        m = r
+        if g < m:
+            m = g
+        if b < m:
+            m = b
+        vf = v+m
+        l = int(vf/2)
+        if l > 0:
+            vm = v-m
+            if vm > 0:
+                if vf <= CMAX:
+                    vf = 2*CMAX-vf
+                s = int(CMAX*vm/vf)
+                if r == v:
+                    h = 0*CMAX+int(CMAX*(g-b)/vm)
+                elif g == v:
+                    h = 2*CMAX+int(CMAX*(b-r)/vm)
+                else:
+                    h = 4*CMAX+int(CMAX*(r-g)/vm)
+            h += CMAX
+            h = int(h/6)
+            if h < 0:
+                h += CMAX
+            elif h >= CMAX:
+                h -= CMAX
+            sl = int(CMAX*s/l)
+        self.r  = r
+        self.g  = g
+        self.b  = b
+        self.h  = h
+        self.sl = sl
+        self.l  = l
+NFACE = 6
+def POS(f, o):
+    return f*9+o
+trace("class cube_colors")
+class cube_colors():
+    def __init__(self, cb):
+        self.cb   = cb
+        self.clrs = []
+        for i in range(NFACE*9):
+            self.clrs.append(color())
+    def set_col(self, f, o, c):
+        self.cb.pce[f][o] = c
+    def clr_ratio(self, c0, c1):
+        ratio = 0
+        if c0 < c1:
+            ratio = -int(2000*(c1-c0)/(c1+c0))
+        elif c0 > c1:
+            ratio =int(2000*(c0-c1)/(c1+c0))
+        return ratio
+    def cmp_h(self, c0, c1):
+        return c1.h> c0.h
+    def cmp_sl(self, c0, c1):
+        return c1.sl > c0.sl
+    def cmp_slr(self, c0, c1):
+        return c1.sl < c0.sl
+    def cmp_l(self, c0, c1):
+        return c1.l> c0.l
+    def cmp_lr(self, c0, c1):
+        return c1.l< c0.l
+    def cmp_r_g(self, c0, c1):
+        return self.clr_ratio(c1.r, c1.g) < self.clr_ratio(c0.r, c0.g)
+    def cmp_r_b(self, c0, c1):
+        return self.clr_ratio(c1.r, c1.b) < self.clr_ratio(c0.r, c0.b)
+    def cmp_b_g(self, c0, c1):
+        return self.clr_ratio(c1.b, c1.g) < self.clr_ratio(c0.b, c0.g)
+    def sort_clrs(self, co, b, n, cmp_fn):
+        e  = b+n-2
+        ib = b
+        ie = e
+        while (ib <= ie):
+            il = e+2
+            ih = b-2
+            i  = ib
+            while i <= ie:
+                if cmp_fn(self.clrs[co[i+1]], self.clrs[co[i]]):
+                    o     = co[i]
+                    co[i] = co[i+1]
+                    co[i+1] = o
+                    if i < il:
+                        il = i
+                    if i > ih:
+                        ih = i
+                i += 1
+            ib = il-1
+            if ib < b:
+                ib = b
+            ie = ih+1
+            if ie > e:
+                ie = e
+    def sort_colors(self, co, t, s):
+        if t < 6:
+            self.sort_clrs(co, 0, 6*s, self.cmp_lr)
+            self.sort_clrs(co, 0, 3*s, self.cmp_sl)
+        else:
+            self.sort_clrs(co, 0, 6*s, self.cmp_sl)
+        self.sort_clrs(co, s, 5*s, self.cmp_h)
+        cmp_fn = (None,
+                self.cmp_r_g,
+                self.cmp_b_g,
+                self.cmp_r_b,
+                self.cmp_slr,
+                self.cmp_l)[t % 6]
+        if cmp_fn != None:
+            self.sort_clrs(co, s, 2*s, cmp_fn)
+        i = 0
+        while i < 1*s:
+            self.clrs[co[i]].clr = 0
+            i += 1
+        while i < 2*s:
+            self.clrs[co[i]].clr = 4
+            i += 1
+        while i < 3*s:
+            self.clrs[co[i]].clr = 5
+            i += 1
+        while i < 4*s:
+            self.clrs[co[i]].clr = 2
+            i += 1
+        while i < 5*s:
+            self.clrs[co[i]].clr = 1
+            i += 1
+        while i < 6*s:
+            self.clrs[co[i]].clr = 3
+            i += 1
+    def determine_colors(self, t):
+        clr_ord = [0] * (NFACE*4)
+        for i in range(NFACE):
+            clr_ord[i] = POS(i, 8)
+        self.sort_colors(clr_ord, t, 1)
+        for i in range(NFACE):
+            clr_ord[4*i+0] = POS(i, 0)
+            clr_ord[4*i+1] = POS(i, 2)
+            clr_ord[4*i+2] = POS(i, 4)
+            clr_ord[4*i+3] = POS(i, 6)
+        self.sort_colors(clr_ord, t, 4)
+        for i in range(NFACE):
+            clr_ord[4*i+0] = POS(i, 1)
+            clr_ord[4*i+1] = POS(i, 3)
+            clr_ord[4*i+2] = POS(i, 5)
+            clr_ord[4*i+3] = POS(i, 7)
+        self.sort_colors(clr_ord, t, 4)
+        clr_map = [0] * NFACE
+        for f in range(NFACE):
+            clr_map[self.clrs[POS(f, 8)].clr] = f
+        for f in range(NFACE):
+            for o in range(8):
+                self.set_col(f, o, clr_map[self.clrs[POS(f, o)].clr])
+        return self.cb.valid_pieces()
+    def set_rgb(self, f, o, rgb):
+        self.clrs[POS(f, o)].set_rgb(rgb[0], rgb[1], rgb[2])
+    def get_clr(self, f, o):
+        clr = self.clrs[POS(f, o)]
+        c = 8
+        if clr.sl > 50:
+            c = int(8*clr.h/CMAX)
+        return c
+trace("imported")
+=================================================
+FILE: pcsolver_v1p5.py
+=================================================
+import gc, os, time
+gc.collect()
+def trace(msg):
+    if False:
+        gc.collect()
+        print("TRACE: "+msg+" mem="+str(gc.mem_free()))
+trace("module pcsolver_v1p5")
+NFACE    = 6
+NSIDE    = 4
+NSIDE_M1 = NSIDE-1
+NCORNER  = int(NFACE*NSIDE/3)
+NEDGE    = int(NFACE*NSIDE/2)
+def RMOD(r):
+    return r & NSIDE_M1
+def RFIX(r):
+    return ((r+1) & NSIDE_M1)-1
+def POS(f, o):
+    return f*9+o
+trace("class remap")
+class remap():
+    def __init__(self):
+        self.fm = [-1] * NFACE
+        self.rm = [-1] * NFACE
+    def init_maps(self, f, r):
+        self.fm[f] = r
+        self.rm[r] = f
+trace("class face_map")
+class face_map():
+    def __init__(self):
+        self.face        = -1
+        self.face_edge   = [-1] * NFACE
+        self.face_corner = [-1] * NFACE
+    def init(self, f, f0, f1, f2, f3):
+        self.face = f
+        self.fce= [f0, f1, f2, f3]
+    def init_rest(self):
+        for d in range(NSIDE):
+            f = self.fce[d].face
+            self.face_edge[f]= 2*d+1
+            self.face_corner[f] = (self.face_edge[f]+1)&(2*NSIDE-1)
+    def dir1(self, d):
+        return self.fce[d].face
+    def dir(self, f, d):
+        fd = -1
+        for i in range(NSIDE):
+            if self.fce[i].face == f:
+                m = self.fce[i]
+                for j in range(NSIDE):
+                    if m.fce[j].face == self.face:
+                        fd = m.fce[RMOD(j+d)].face
+                        break
+                break
+        return fd
+trace("class cube_map")
+class cube_map():
+    def __init__(self):
+        self.map = []
+        self.rm= []
+        self.dst = []
+        for i in range(NFACE):
+            self.map.append(face_map())
+            self.rm.append([])
+            self.dst.append([-1] * NFACE)
+            for j in range(NFACE):
+                self.rm[i].append(remap())
+        self.map[0].init(0, self.map[3], self.map[4], self.map[1], self.map[5])
+        self.map[1].init(1, self.map[0], self.map[4], self.map[2], self.map[5])
+        self.map[2].init(2, self.map[1], self.map[4], self.map[3], self.map[5])
+        self.map[3].init(3, self.map[2], self.map[4], self.map[0], self.map[5])
+        self.map[4].init(4, self.map[0], self.map[3], self.map[2], self.map[1])
+        self.map[5].init(5, self.map[0], self.map[1], self.map[2], self.map[3])
+        for i in range(NFACE):
+            self.map[i].init_rest()
+        for f0 in range(NFACE):
+            for f1 in range(NFACE):
+                self.dst[f0][f1] = 2
+        ff0 = 0
+        for fr0 in range(NFACE):
+            self.dst[fr0][fr0] = 0
+            for d0 in range(NSIDE):
+                ff1 = 1
+                fr1 = self.map[fr0].dir1(d0)
+                self.dst[fr0][fr1] = 1
+                for d1 in range(NSIDE):
+                    ff2 = self.map[ff0].dir(ff1, d1)
+                    fr2 = self.map[fr0].dir(fr1, d1)
+                    for d2 in range(NSIDE):
+                        ff3 = self.map[ff1].dir(ff2, d2)
+                        fr3 = self.map[fr1].dir(fr2, d2)
+                        self.rm[fr0][fr1].init_maps(ff3, fr3)
+    def dir(self, f, d):
+        return self.map[f].dir1(d)
+    def adjacent(self, f0, f1):
+        return self.dst[f0][f1] == 1
+    def edge(self, f0, f1):
+        return self.map[f0].face_edge[f1]
+    def corner(self, f0, f1):
+        return self.map[f0].face_corner[f1]
+    def get_remap(self, f0, f1):
+        return self.rm[f0][f1]
+large = False
+try:
+    large = os.stat("/pcmtab4_v1p5.bin")[6] == 2561877
+except:
+    None
+if large:
+    trace("class cube_mtab4")
+    class cube_mtab4:
+        NSTAGE = 4
+        NPIECE = 4
+        def init(c):
+            s = c.stage(0)
+            c.adde(s, 0, 1)
+            c.adde(s, 0, 4)
+            c.adde(s, 1, 4)
+            c.addc(s, 0, 4, 1)
+            c.send(s)
+            s = c.stage(s)
+            c.adde(s, 0, 3)
+            c.adde(s, 0, 5)
+            c.adde(s, 5, 1)
+            c.addc(s, 0, 1, 5)
+            c.send(s)
+            s = c.stage(s)
+            c.adde(s, 3, 5)
+            c.adde(s, 4, 3)
+            c.addc(s, 0, 3, 4)
+            c.addc(s, 0, 5, 3)
+            c.send(s)
+            s = c.stage(s)
+            c.adde(s, 2, 1)
+            c.adde(s, 2, 3)
+            c.adde(s, 2, 4)
+            c.addc(s, 2, 1, 4)
+            c.addc(s, 2, 3, 5)
+            c.addc(s, 2, 4, 3)
+            c.send(s)
+            s = c.stage(s)
+            c.adde(s, 2, 5)
+            c.addc(s, 2, 5, 1)
+        file_name = "/pcmtab4_v1p5.bin"
+        mtb = (
+            5, 6, 7, 9
+            )
+        MV_MENT = 17
+    cube_mtab = cube_mtab4
+else:
+    trace("class cube_mtab1")
+    class cube_mtab1:
+        NSTAGE = 8
+        NPIECE = 3
+        def init(c):
+            s = c.stage(0)
+            c.adde(s, 2, 1)
+            c.adde(s, 2, 4)
+            c.send(s)
+            s = c.stage(s)
+            c.adde(s, 1, 4)
+            c.addc(s, 2, 1, 4)
+            c.send(s)
+            s = c.stage(s)
+            c.adde(s, 2, 3)
+            c.adde(s, 2, 5)
+            c.send(s)
+            s = c.stage(s)
+            c.adde(s, 4, 3)
+            c.addc(s, 2, 4, 3)
+            c.send(s)
+            s = c.stage(s)
+            c.adde(s, 3, 5)
+            c.addc(s, 2, 3, 5)
+            c.send(s)
+            s = c.stage(s)
+            c.adde(s, 0, 3)
+            c.adde(s, 0, 4)
+            c.addc(s, 0, 3, 4)
+            c.send(s)
+            s = c.stage(s)
+            c.addc(s, 0, 1, 5)
+            c.addc(s, 0, 4, 1)
+            c.addc(s, 2, 5, 1)
+            c.send(s)
+            s = c.stage(s)
+            c.adde(s, 0, 1)
+            c.adde(s, 5, 1)
+            c.send(s)
+            s = c.stage(s)
+            c.adde(s, 0, 5)
+            c.addc(s, 0, 5, 3)
+        file_name = "/pcmtab1_v1p5.bin"
+        mtb = (
+            3, 4, 4, 5, 5, 6, 7, 7
+            )
+        MV_MENT = 13
+    cube_mtab = cube_mtab1
+trace("class solve_map")
+class solve_map():
+    NSTAGE = cube_mtab.NSTAGE
+    NPIECE = cube_mtab.NPIECE
+    def __init__(self):
+        self.cn    = [-1] * (solve_map.NSTAGE+2)
+        self.en    = [-1] * (solve_map.NSTAGE+2)
+        self.sz    = [-1] * solve_map.NSTAGE
+        self.cp0   = [-1] * NCORNER
+        self.cp1   = [-1] * NCORNER
+        self.cp2   = [-1] * NCORNER
+        self.ep0   = [-1] * NEDGE
+        self.ep1   = [-1] * NEDGE
+        self.cn[0] = NCORNER
+        self.en[0] = NEDGE
+        cube_mtab.init(self)
+    def addc(self, s, c0, c1, c2):
+        i = self.cn[s]-1
+        self.cn[s]  = i
+        self.cp0[i] = c0
+        self.cp1[i] = c1
+        self.cp2[i] = c2
+    def adde(self, s, e0, e1):
+        i = self.en[s]-1
+        self.en[s]  = i
+        self.ep0[i] = e0
+        self.ep1[i] = e1
+    def stage(self, s):
+        self.cn[s+1] = self.cn[s]
+        self.en[s+1] = self.en[s]
+        return s+1
+    def send(self, s):
+        msg = "STAGE: "+str((s-1))
+        idx = 1
+        nc  = self.cn[s-1]-self.cn[s]
+        msg += " C"+str(nc)
+        if nc > 0:
+            i = self.cn[s]
+            while (i < self.cn[s-1]):
+                msg += " ["+str(self.cp0[i])+","+str(self.cp1[i])+","+str(self.cp2[i])+"]"
+                idx *= 3*(i+1)
+                i += 1
+        ne = self.en[s-1]-self.en[s]
+        msg += " E"+str(ne)
+        if ne > 0:
+            i = self.en[s]
+            while (i < self.en[s-1]):
+                msg += " ["+str(self.ep0[i])+","+str(self.ep1[i])+"]"
+                idx *= 2*(i+1)
+                i += 1
+        if s == solve_map.NSTAGE:
+            idx = int(idx/2)
+        self.sz[s-1] = idx
+trace("class mtab")
+class mtab():
+    def __init__(self, s):
+        self.stage  = s
+        self.sz     = sm.sz[s]
+        self.nbytes = cube_mtab.mtb[s]
+        self.foff   = 0
+        for i in range(s):
+            self.foff += (sm.sz[i]-1)*cube_mtab.mtb[i]
+        self.fmap   = (0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5)
+        self.rmap   = (1, 2, -1) * NFACE
+    def moves(self, i, f, r):
+        mv = 0
+        if i > 0:
+            d = (i-1)*self.nbytes
+            fs = open(cube_mtab.file_name, 'rb')
+            fs.seek(self.foff+d)
+            data = fs.read(self.nbytes)
+            fs.close()
+            d = 0
+            b = data[d]
+            d += 1
+            if b != 0xFF:
+                mvm = self.nbytes*2-1
+                f0 = self.fmap[b]
+                f[mv] = f0
+                r[mv] = self.rmap[b]
+                mv += 1
+                while (mv < mvm):
+                    b >>= 4
+                    if (mv & 1) != 0:
+                        b = data[d]
+                        d += 1
+                    b0 = b & 0xF
+                    if b0 == 0xF:
+                        break
+                    f0 = self.fmap[b0]
+                    r[mv] = self.rmap[b0]
+                    if f0 >= f[mv-1]:
+                        f0 += 1
+                    f[mv] = f0
+                    mv += 1
+        return mv
+trace("class cube_idx")
+class cube_idx():
+    def __init__(self, m = None):
+        self.ci = []
+        self.ei = []
+        for i in range(NFACE):
+            self.ci.append([0] * NFACE)
+            self.ei.append([0] * NFACE)
+        self.tmp_idx = [0] * solve_map.NPIECE
+        self.init(m)
+    def init(self, m):
+        if m != None:
+            for i in range(NCORNER):
+                cp0 = sm.cp0[i]
+                cp1 = sm.cp1[i]
+                cp2 = sm.cp2[i]
+                c0 = m.corner(cp0, cp1)
+                c1 = m.corner(cp1, cp2)
+                c2 = m.corner(cp2, cp0)
+                i3 = 3*i
+                self.ci[c0][c1] = i3+2
+                self.ci[c1][c2] = i3+1
+                self.ci[c2][c0] = i3
+            for i in range(NEDGE):
+                ep0 = sm.ep0[i]
+                ep1 = sm.ep1[i]
+                e0 = m.edge(ep0, ep1)
+                e1 = m.edge(ep1, ep0)
+                i2 = 2*i
+                self.ei[e0][e1] = i2+1
+                self.ei[e1][e0] = i2
+    def index(self, s):
+        idx = self.tmp_idx
+        ind = 0
+        cs = sm.cn[s]
+        ce = sm.cn[s+1]
+        cn = cs - ce
+        cm = 3*cs
+        for i in range(cn):
+            cp0 = sm.cp0[cs-i-1]
+            cp1 = sm.cp1[cs-i-1]
+            ii = self.ci[cp0][cp1]
+            for j in range(i):
+                if ii > idx[j]:
+                    ii -= 3
+            idx[i] = ii
+            ind = (ind*cm)+ii
+            cm -= 3
+        es = sm.en[s]
+        ee = sm.en[s+1]
+        en = es - ee
+        em = 2*es
+        for i in range(en):
+            ep0 = sm.ep0[es-i-1]
+            ep1 = sm.ep1[es-i-1]
+            ii = self.ei[ep0][ep1]
+            for j in range(i):
+                if ii > idx[j]:
+                    ii -= 2
+            idx[i] = ii
+            ind = (ind*em)+ii
+            em -= 2
+        if s == (solve_map.NSTAGE-1):
+            if en > 0:
+                ind = (int(ind/4)*2)+(ind&1)
+            else:
+                ind = (int(ind/6)*3)+(ind%3)
+        sz = sm.sz[s]
+        ind = (sz-1-ind)
+        return ind
+MAXINT = 0x7FFFFFFF
+MV_MAX = 80
+import random
+def RND(max):
+    return random.getrandbits(19) % max
+trace("class cube")
+class cube():
+    colors = None
+    def __init__(self):
+        self.mv_n     = 0
+        self.found    = 0
+        self.quick    = 0
+        self.end_time = 0
+        self.pce      = [0] * NFACE
+        for f in range(NFACE):
+            self.pce[f] = [f] * (2*NSIDE)
+        self.mv_f    = [0] * MV_MAX
+        self.mv_r    = [0] * MV_MAX
+        self.colors  = None
+        self.tmp_f    = [0] * cube_mtab.MV_MENT
+        self.tmp_r    = [0] * cube_mtab.MV_MENT
+        self.tmp_mi= cube_idx()
+    def alloc_colors(self):
+        if self.colors == None:
+            self.colors= colors.cube_colors(self)
+    def copy(self, m):
+        for f in range(NFACE):
+            for i in range(2*NSIDE):
+                self.pce[f][i] = m.pce[f][i]
+    def copy_moves(self, m):
+        self.mv_n = m.mv_n
+        for i in range(self.mv_n):
+            self.mv_f[i] = m.mv_f[i]
+            self.mv_r[i] = m.mv_r[i]
+    def corner(self, f0, f1):
+        return self.pce[f0][cm.corner(f0, f1)]
+    def edge(self, f0, f1):
+        return self.pce[f0][cm.edge(f0, f1)]
+    def rot(self, f, r):
+        r  = RMOD(r)
+        p0 = self.pce[f]
+        fd = cm.dir(f, NSIDE_M1)
+        while r > 0:
+            r   -= 1
+            p   = p0[6]; p0[6] = p0[4]; p0[4] = p0[2]; p0[2] = p0[0]; p0[0] = p
+            p   = p0[7]; p0[7] = p0[5]; p0[5] = p0[3]; p0[3] = p0[1]; p0[1] = p
+            pd  = self.pce[fd]
+            od2 = cm.corner(fd, f)
+            od0 = (od2-2)&7
+            c0  = pd[od0]
+            e0  = pd[od0+1]
+            c1  = pd[od2]
+            for d in range(NSIDE-2, -1, -1):
+                fs  = cm.dir(f, d)
+                os2 = cm.corner(fs, f)
+                os0 = (os2-2)&7
+                ps  = self.pce[fs]
+                pd[od0]   = ps[os0]
+                pd[od0+1] = ps[os0+1]
+                pd[od2]   = ps[os2]
+                pd  = ps
+                od0 = os0
+                od2 = os2
+            pd[od0]   = c0
+            pd[od0+1] = e0
+            pd[od2]   = c1
+    def backtrack_a(self, f):
+        i = self.mv_n
+        btrack = False
+        while (i > 0):
+            i -= 1
+            fi = self.mv_f[i]
+            if cm.adjacent(f, fi):
+                break
+            if f <= fi:
+                btrack = True
+                break
+        return btrack
+    def add_mv(self, f, r):
+        i = self.mv_n
+        mrg = False
+        while (i > 0):
+            i -= 1
+            fi = self.mv_f[i]
+            if cm.adjacent(f, fi):
+                break
+            if f == fi:
+                r += self.mv_r[i]
+                r = RFIX(r)
+                if r != 0:
+                    self.mv_r[i] = r
+                else:
+                    self.mv_n -= 1
+                    while (i < self.mv_n):
+                        self.mv_f[i] = self.mv_f[i+1]
+                        self.mv_r[i] = self.mv_r[i+1]
+                        i += 1
+                mrg = True
+                break
+        if not mrg:
+            self.mv_f[self.mv_n] = f
+            self.mv_r[self.mv_n] = RFIX(r)
+            self.mv_n += 1
+    def move(self, f, r):
+        self.rot(f, r)
+        self.add_mv(f, r)
+    def valid_pieces(self):
+        val = True
+        for f0 in range(NFACE):
+            for f1 in range(NFACE):
+                if cm.adjacent(f0, f1):
+                    efound = False
+                    cfound = False
+                    f2 = cm.get_remap(f0, f1).fm[5]
+                    for s0 in range(NFACE):
+                        for s1 in range(NFACE):
+                            if cm.adjacent(s0, s1):
+                                s2 = cm.get_remap(s0, s1).fm[5]
+                                if (self.edge(s0, s1) == f0 and
+                                    self.edge(s1, s0) == f1):
+                                    efound = True
+                                if (self.corner(s0, s1) == f0 and
+                                    self.corner(s1, s2) == f1 and
+                                    self.corner(s2, s0) == f2):
+                                    cfound = True
+                    if not (efound and cfound):
+                        val = False
+        return val
+    def valid_positions(self):
+        c = cube()
+        c.copy(self)
+        c.solve(0)
+        c.solve_apply()
+        return c.solved()
+    def solved(self):
+        slvd = True
+        f = 0
+        while (slvd and f < NFACE):
+            for p in range(2*NSIDE):
+                if self.pce[f][p] != f:
+                    slvd = False
+                    break
+            f += 1
+        return slvd
+    def shuffle(self, n):
+        for i in range(n):
+            self.rot(RND(NFACE), 1+RND(NSIDE_M1))
+    def timeout(self):
+        return time.ticks_ms() >= self.end_time
+    def solve_remap(self, best, s0):
+        slvd = True
+        for s in range(s0, solve_map.NSTAGE):
+            mi = self.tmp_mi
+            mi.init(self)
+            i = mi.index(s)
+            if i != 0:
+                n = -1
+                f = self.tmp_f
+                r = self.tmp_r
+                n = mt[s].moves(i, f, r)
+                if n > 0:
+                    mv = self.mv_n + n
+                    for j in range(n):
+                        self.add_mv(f[j], r[j])
+                    if (self.mv_n > best or
+                        (s == 0 and self.mv_n < mv)):
+                        slvd = False
+                        break
+                    if s < (solve_map.NSTAGE-1):
+                        for j in range(n):
+                            self.rot(f[j], r[j])
+                else:
+                    slvd = False
+                    break
+        return slvd
+    def solve_one(self, cb, cs, depth):
+        slvd = False
+        if self.mv_n < depth:
+            f = 0
+            while (not slvd and f < NFACE):
+                if not self.backtrack_a(f):
+                    n = self.mv_n+1
+                    for i in range(1, NSIDE):
+                        self.move(f, 1)
+                        if not slvd and self.solve_one(cb, cs, depth):
+                            slvd = True
+                    self.move(f, 1)
+                f += 1
+        else:
+            cs.copy(self)
+            cs.copy_moves(self)
+            cs.end_time = cb.end_time
+            if cs.solve_remap(cb.mv_n, 0):
+                if cs.mv_n < cb.mv_n:
+                    cb.copy_moves(cs)
+            if cb.mv_n <= 8 or (cb.mv_n <MV_MAX and (cb.quick or cb.timeout())):
+                trace("solved_one()")
+                slvd = True
+        return slvd
+    def solve(self, msecs = 1000):
+        start_time = time.ticks_ms()
+        self.mv_n = MAXINT
+        self.end_time = start_time + msecs
+        self.quick = (msecs == 0)
+        cw = cube()
+        cw.copy(self)
+        cs = cube()
+        depth = 0
+        while (not cw.solve_one(self, cs, depth)):
+            depth += 1
+    def solve_apply(self):
+        for i in range(self.mv_n):
+            self.rot(self.mv_f[i], self.mv_r[i])
+    def set_rgb(self, f, o, rgb):
+        self.colors.set_rgb(f, o, rgb)
+    def get_clr(self, f, o):
+        return self.colors.get_clr(f, o)
+    def determine_colors(self, t):
+        return self.colors.determine_colors(t)
+def init(colors_module):
+    trace("init()")
+    global colors, cm, sm, mt
+    colors = colors_module
+    cm     = cube_map()
+    sm     = solve_map()
+    mt     = []
+    for s in range(cube_mtab.NSTAGE):
+        mt.append(mtab(s))
+    trace("done")
+trace("imported")
+```
