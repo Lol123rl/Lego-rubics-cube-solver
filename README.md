@@ -2,80 +2,111 @@
 
 ## What is this?
 
-This is my LEGO SPIKE Prime Rubik's Cube Solver. I built it using the LEGO SPIKE Prime system and programmed it to solve a Rubik's Cube.
+This is my LEGO SPIKE Prime Rubik's Cube Solver. It is a robot that uses LEGO SPIKE Prime motors and a color sensor to solve a Rubik's Cube.
 
-The project is basically a robot that can figure out what moves need to be made and then use motors to turn the cube. I made this because I thought it would be really cool to make a robot that can solve something that I sometimes have trouble solving myself.
-
-## What I Used
-
-* LEGO SPIKE Prime Hub
-* LEGO SPIKE Prime motors
-* LEGO SPIKE Prime color sensor
-* LEGO Technic pieces
-* Rubik's Cube
-* SPIKE Prime coding app
+I made this project because I thought it would be cool to build a robot that could solve a Rubik's Cube by itself. I wanted to combine LEGO building, programming, and problem solving into one project.
 
 ## How It Works
 
-The robot uses motors to move the Rubik's Cube and a color sensor to detect the colors on the cube.
+The robot uses motors to move the Rubik's Cube and a color sensor to read the colors.
 
-First, the cube is put into the robot. The program then reads the cube and figures out what the cube looks like.
+The basic process is:
 
-After that, the program works out a solution. The motors then move the cube one turn at a time until it is solved.
+1. Put a scrambled Rubik's Cube into the robot.
+2. The color sensor reads the colors.
+3. The program figures out what the cube looks like.
+4. The program calculates the moves needed to solve it.
+5. The motors move the cube.
+6. The robot continues until the cube is solved.
 
-The hard part was getting the robot to turn the cube the right amount. If a motor moves too far or not far enough, the cube can end up in the wrong position, and the rest of the solution won't work.
+The motors have to be very accurate. If one motor moves too far or not far enough, the cube can get out of position and the solution will not work correctly.
 
-## The Motors
+## Hardware
 
-The motors are used for the different movements needed to solve the cube. I had to test the motors a lot because the amount they move does not always work the first time perfectly.
+I built the robot using parts from a LEGO SPIKE Prime kit.
 
-I ended up measuring how far the cube moved for different motor movements and adjusting the code until the turns were much more accurate.
+* 1 LEGO SPIKE Prime Hub
+* 1 LEGO SPIKE Prime Large Motor
+* 2 LEGO SPIKE Prime Small Motors
+* 1 LEGO SPIKE Prime Color Sensor
+* LEGO Technic beams, gears, axles, and connectors
+* 1 Rubik's Cube
 
-## The Color Sensor
+## Bill of Materials
 
-The color sensor is used to detect the colors on the Rubik's Cube.
+| Part                          |  Amount |
+| ----------------------------- | ------: |
+| LEGO SPIKE Prime Hub          |       1 |
+| LEGO SPIKE Prime Large Motor  |       1 |
+| LEGO SPIKE Prime Small Motor  |       2 |
+| LEGO SPIKE Prime Color Sensor |       1 |
+| LEGO Technic parts            | Various |
+| Rubik's Cube                  |       1 |
 
-This was one of the harder parts because the sensor has to be in the right position to read the colors correctly. Lighting can also affect how well the sensor detects the colors.
+## Building It
+
+First, I built the main LEGO frame that holds the Rubik's Cube.
+
+Then I added the motors and gears that move the cube. I also added the color sensor so the robot can read the colors.
+
+After building everything, I connected the motors and sensor to the SPIKE Prime Hub and tested each part separately.
+
+A big part of building this was making sure the cube stays in the right position while the motors are moving it.
 
 ## Programming
 
-I programmed the robot using the LEGO SPIKE Prime coding system.
+I programmed the Cuber using the LEGO SPIKE Prime programming system.
 
-The program has different parts for things like:
+The program controls the motors, reads the color sensor, and tells the robot what movements to make.
 
-* Reading the cube
-* Moving the motors
-* Turning different sides
-* Keeping track of the cube
-* Solving the cube
-* Making sure the robot does the moves in the correct order
+I had to test the motor movements many times because the robot needs to turn the cube very accurately.
 
-I had to do a lot of testing because even a small mistake in one movement can mess up the whole solve.
+## Calibration
+
+Getting the motor movements right was one of the hardest parts.
+
+I tested how far the cube moved with different motor settings and changed the values until the movements were accurate.
+
+Even a small difference in a motor movement can cause the cube to be in the wrong position later.
 
 ## Problems I Had
 
-One of the biggest problems was making the robot move the exact amount I wanted.
+One problem I had was getting the motors to move exactly the right amount.
 
-Sometimes the motor would move a little too far or not far enough. I had to change the motor settings and test it again.
+Another problem was keeping the cube lined up correctly. If the cube moves around while the robot is running, the motors might not turn it correctly.
 
-Another problem was making sure the cube stayed in the correct position while it was being turned. If the cube moves when it isn't supposed to, the robot can lose track of where the colors are.
+I fixed these problems by testing the robot, changing the code or LEGO pieces, and trying again.
 
 ## What I Learned
 
-While making this project, I learned more about programming motors and using sensors with LEGO SPIKE Prime.
+I learned a lot about programming motors and sensors with LEGO SPIKE Prime.
 
-I also learned that robots don't always work perfectly on the first try. I had to test things over and over and change the code when something didn't work.
+I also learned that the physical robot and the code have to work together. A small problem with the LEGO mechanism can cause a problem in the program, and a small programming mistake can make the robot move incorrectly.
 
-The project also helped me understand how complicated a Rubik's Cube can be because the robot has to keep track of a lot of different pieces and movements.
+This project also taught me a lot about testing and debugging because I had to keep trying different things until they worked.
+
+## How to Run It
+
+1. Turn on the SPIKE Prime Hub.
+2. Connect the Hub to the SPIKE Prime app.
+3. Open the Cuber program.
+4. Make sure the motors and color sensor are connected to the correct ports.
+5. Put the scrambled Rubik's Cube into the robot.
+6. Start the program.
+7. Let the robot scan the cube and run the solving program.
+
+## Photos
+
+Photos of the finished robot, the mechanism, and the build are included in this repository.
 
 ## Future Improvements
 
-If I keep working on this project, I would like to make it faster and more accurate.
+I would like to make the robot faster and make the color sensor more accurate.
 
-I would also like to improve the color scanning so that it can recognize the cube more reliably and make the robot solve the cube without needing as much setup.
+I would also like to improve the mechanism so the cube stays in place better and make the solving process more reliable.
 
-## Final Project
+## Why I Made It
 
-The goal of this project was to make a LEGO SPIKE Prime robot that could solve a Rubik's Cube.
+I made this project because I like LEGO, robotics, and programming. I wanted to challenge myself by making something that could solve a real Rubik's Cube instead of just making a robot that moves around.
 
-It took a lot of testing, fixing, and changing things, but I think it is pretty cool that a bunch of LEGO pieces, motors, sensors, and code can work together to solve a Rubik's Cube.
+It took a lot of testing and fixing, but it was really cool seeing the robot actually solve the cube.
