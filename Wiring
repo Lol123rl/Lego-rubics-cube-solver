@@ -1,0 +1,5 @@
+  A = Color Sensor
+B = Move color sensor
+C = Distance Sensor
+D = Turn Motor
+F = Flip Motor
