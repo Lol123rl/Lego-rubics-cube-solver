@@ -113,4 +113,7 @@ It took a lot of testing and fixing, but it was really cool seeing the robot act
 
 ## Project Photo
 
-![Finished LEGO Rubik's Cube Solver](rubiks-cube-solver.png)
+https://github.com/Lol123rl/Lego-rubics-cube-solver/blob/main/Recording%202026-08-13%20081846.mp4
+
+https://github.com/Lol123rl/Lego-rubics-cube-solver/blob/main/Screenshot%202026-08-13%20081636.png
+
