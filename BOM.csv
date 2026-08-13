@@ -1,7 +1,14 @@
-Part,Quantity,Purchase Link
-LEGO Education SPIKE Prime Set (45678),1,https://education.lego.com/en-us/products/lego-education-spike-prime-set/45678/
-LEGO Technic Large Angular Motor (45602),1,https://education.lego.com/en-us/products/lego-technic-large-angular-motor/45602/
-LEGO Technic Medium Angular Motor (45603),2,https://education.lego.com/en-us/products/lego-technic-medium-angular-motor/45603/
-LEGO Technic Color Sensor (45605),1,https://education.lego.com/en-us/products/lego-technic-color-sensor/45605/
-LEGO Technic Distance Sensor (45604),1,https://education.lego.com/en-us/products/lego-technic-distance-sensor/45604/
-LEGO building elements,1 set,https://education.lego.com/en-us/products/lego-education-spike-prime-set/45678/
+Part,Quantity Used,Price (USD),Cost for Build,Purchase Link,Notes
+LEGO Education SPIKE Prime Set (45678),1,399.95,399.95,https://education.lego.com/en-us/products/lego-education-spike-prime-set/45678/,"Full kit used for this project; includes the Hub, motors, sensors, beams, gears, axles, pins, frames, wheels, and connectors shown in the parts inventory image"
+LEGO SPIKE Prime Hub,1,Included in set,0.00,https://education.lego.com/en-us/products/lego-education-spike-prime-set/45678/,"Taken from the SPIKE Prime Set"
+LEGO Technic Large Angular Motor (45602),1,Included in set,0.00,https://education.lego.com/en-us/products/lego-technic-large-angular-motor/45602/,"Taken from the SPIKE Prime Set"
+LEGO Technic Medium Angular Motor (45603),2,Included in set,0.00,https://education.lego.com/en-us/products/lego-technic-medium-angular-motor/45603/,"Two motors used; included in the SPIKE Prime Set"
+LEGO Technic Color Sensor (45605),1,Included in set,0.00,https://education.lego.com/en-us/products/lego-technic-color-sensor/45605/,"Used to scan the Rubik's Cube colors"
+LEGO Technic Distance Sensor (45604),1,Included in set,0.00,https://education.lego.com/en-us/products/lego-technic-distance-sensor/45604/,"Taken from the SPIKE Prime Set"
+LEGO Technic beams and frames,Various,Included in set,0.00,https://education.lego.com/en-us/products/lego-education-spike-prime-set/45678/,"Structural pieces shown in the parts inventory"
+LEGO Technic axles,Various,Included in set,0.00,https://education.lego.com/en-us/products/lego-education-spike-prime-set/45678/,"Different axle lengths used throughout the mechanism"
+LEGO Technic gears and wheels,Various,Included in set,0.00,https://education.lego.com/en-us/products/lego-education-spike-prime-set/45678/,"Used to transfer motor motion to the cube mechanism"
+LEGO Technic pins and connectors,Various,Included in set,0.00,https://education.lego.com/en-us/products/lego-education-spike-prime-set/45678/,"Pins and angled connectors used to assemble the structure"
+LEGO Technic panels and miscellaneous elements,Various,Included in set,0.00,https://education.lego.com/en-us/products/lego-education-spike-prime-set/45678/,"Remaining building elements shown in the parts inventory"
+3x3 Rubik's Cube,1,10.00 estimated,10.00,https://www.rubiks.com/,"Approximate replacement price; any standard compatible 3x3 cube can be used"
+TOTAL PROJECT HARDWARE COST,,,409.95,,"Estimated cost if starting without a SPIKE Prime Set"
