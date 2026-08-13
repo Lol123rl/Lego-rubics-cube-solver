@@ -1,5 +1,21 @@
-  A = Color Sensor
-B = Move color sensor
-C = Distance Sensor
-D = Turn Motor
-F = Flip Motor
+## Wiring Diagram
+
+The LEGO Education SPIKE Prime Hub uses the following ports:
+
+```text
+                 LEGO SPIKE PRIME HUB
+
+              ┌──────────────────────┐
+ Color Sensor │ A                  F │ Tilt Motor
+              │                      │
+   Scan Motor │ B                  E │ Not Used
+              │                      │
+Distance Sensor│ C                 D │ Turn Motor
+              └──────────────────────┘
+
+Port A → Color Sensor
+Port B → Scan Motor
+Port C → Distance Sensor
+Port D → Turn Motor
+Port E → Not Used
+Port F → Tilt Motor
