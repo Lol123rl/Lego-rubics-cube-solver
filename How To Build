@@ -1,0 +1,92 @@
+## Assembly Guide
+
+The Rubik's Cube solver is built from LEGO Education SPIKE Prime parts.
+
+### 1. Build the Base
+
+Build a strong rectangular base using the large Technic frames, beams, and yellow panels.
+
+The base needs to be wide enough to support:
+- the Rubik's Cube holder
+- the turning motor
+- the tilting mechanism
+- the sensor arm
+- the SPIKE Prime Hub
+
+Keep the base rigid so the cube stays aligned while the motors move it.
+
+### 2. Build the Cube Holder
+
+Build a square platform in the center of the machine where the 3x3 Rubik's Cube can sit.
+
+The cube should:
+- fit securely without being squeezed
+- stay centered
+- still be able to rotate
+- be easy to remove when the solve is finished
+
+Connect the holder to the motor-driven turning mechanism.
+
+### 3. Add the Turn Motor
+
+Mount a motor so it can rotate the cube holder.
+
+Use Technic axles, gears, and connectors to transfer the motor's rotation to the cube platform.
+
+Make sure the mechanism can turn smoothly without the cube rubbing against the frame.
+
+### 4. Build the Tilt Mechanism
+
+Build the upright arm beside the cube.
+
+Connect it to another motor so the mechanism can tilt or reposition the cube.
+
+The arm must be strong enough to move the cube but still leave enough space for the cube to rotate.
+
+### 5. Mount the Color Sensor
+
+Mount the SPIKE Prime Color Sensor so it points directly at one square of the Rubik's Cube.
+
+The sensor must be close enough to read colors reliably but should not touch the cube.
+
+The program rotates and repositions the cube so the sensor can scan its different faces.
+
+### 6. Mount the Distance Sensor
+
+Mount the Distance Sensor above or near the cube area.
+
+Keep the sensor facing the area it needs to detect without LEGO beams blocking its view.
+
+### 7. Install the SPIKE Prime Hub
+
+Secure the SPIKE Prime Hub to the base.
+
+Place it where:
+- the USB/Bluetooth controls remain accessible
+- motor and sensor cables can reach it
+- cables do not interfere with the moving mechanisms
+
+### 8. Connect the Cables
+
+Route all motor and sensor cables along the frame.
+
+Keep the wires away from:
+- gears
+- rotating axles
+- the cube holder
+- the tilting mechanism
+
+Use the LEGO structure to guide and hold loose cables where possible.
+
+### 9. Test the Mechanisms
+
+Before running the full solving program:
+
+1. Check that the cube can rotate freely.
+2. Check that the tilt mechanism moves without hitting the frame.
+3. Check that the Color Sensor can clearly see the cube.
+4. Check that no cables are caught in moving parts.
+5. Test each motor individually.
+6. Place a scrambled 3x3 cube into the holder and run the program.
+
+Small adjustments to the cube holder or sensor position may be needed for reliable scanning.
