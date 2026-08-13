@@ -110,3 +110,7 @@ I would also like to improve the mechanism so the cube stays in place better and
 I made this project because I like LEGO, robotics, and programming. I wanted to challenge myself by making something that could solve a real Rubik's Cube instead of just making a robot that moves around.
 
 It took a lot of testing and fixing, but it was really cool seeing the robot actually solve the cube.
+
+## Project Photo
+
+![Finished LEGO Rubik's Cube Solver](rubiks-cube-solver.png)
